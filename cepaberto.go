@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func getCepaberto(cep string) *CepAbertoResult {
+func getCepaberto(cep string, mReturn chan *CepAbertoResult, fastReturn chan string) { //*CepAbertoResult {
 	cepAberto := url.QueryEscape(cep)
 
 	url := fmt.Sprintf("http://www.cepaberto.com/api/v3/cep?cep=%s", cepAberto)
@@ -19,7 +19,8 @@ func getCepaberto(cep string) *CepAbertoResult {
 	req.Header.Set("Authorization", fmt.Sprintf(`Token token=%s`, os.Getenv("cepabertoToken")))
 	if err != nil {
 		fmt.Println("Get error")
-		return nil
+		mReturn <- nil
+		//return nil
 	}
 
 	client := &http.Client{}
@@ -27,29 +28,36 @@ func getCepaberto(cep string) *CepAbertoResult {
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("Do request error")
-		return nil
+		mReturn <- nil
+		//return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		fmt.Println("200 error")
-		return nil
+		mReturn <- nil
+		//return nil
 	}
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Real error")
-		return nil
+		mReturn <- nil
+		//return nil
 	}
 
 	var resultado CepAbertoResult
 	err = json.Unmarshal(content, &resultado)
 	if err != nil {
 		fmt.Println("json error")
-		return nil
+		mReturn <- nil
+		//return nil
 	}
 
-	return &resultado
+	fastReturn <- "cepaberto"
+	mReturn <- &resultado
+
+	//return &resultado
 }
 
 func mapCepabertoJSON(resp *CepAbertoResult) string {

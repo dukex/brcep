@@ -7,36 +7,43 @@ import (
 	"net/http"
 )
 
-func getViacep(cep string) *ViaCepResult {
+func getViacep(cep string, mReturn chan *ViaCepResult, fastReturn chan string) { //*ViaCepResult {
 
 	url := fmt.Sprintf("http://viacep.com.br/ws/%s/json/", cep)
 
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println("Get error")
-		return nil
+		mReturn <- nil
+		//return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		fmt.Println("200 error")
-		return nil
+		mReturn <- nil
+		//return nil
 	}
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Real error")
-		return nil
+		mReturn <- nil
+		//return nil
 	}
 
 	var resultado ViaCepResult
 	err = json.Unmarshal(content, &resultado)
 	if err != nil {
 		fmt.Println("json error")
-		return nil
+		mReturn <- nil
+		//return nil
 	}
 
-	return &resultado
+	fastReturn <- "viacep"
+	mReturn <- &resultado
+
+	//return &resultado
 }
 
 func mapViacepJSON(resp *ViaCepResult) string {

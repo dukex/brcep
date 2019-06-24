@@ -57,6 +57,7 @@ func brcepAPI(resp *brcepResult) string {
 	conv, err := json.MarshalIndent(jsonConvert, "", "  ")
 	if err != nil {
 		fmt.Printf("apiWriteJSON: %s", err)
+		return "err"
 	}
 	return string(conv)
 }
@@ -66,17 +67,50 @@ func apiCepJSON(c *gin.Context) {
 	cep := c.Param("cep")
 	c.Header("Content-Type", "application/json; charset=utf-8")
 
-	resp := getCepaberto(cep) // get CEPAberto
-	if (resp != nil) && (resp.Cep != "") {
-		c.String(200, mapCepabertoJSON(resp))
-	} else {
-		resp := getViacep(cep) // get ViaCEP
-		if (resp != nil) && (resp.Cep != "") {
-			c.String(200, mapViacepJSON(resp))
+	// old:
+	// resp := getCepaberto(cep) // get CEPAberto
+	// if (resp != nil) && (resp.Cep != "") {
+	// 	c.String(200, mapCepabertoJSON(resp))
+	// } else {
+	// 	resp := getViacep(cep) // get ViaCEP
+	// 	if (resp != nil) && (resp.Cep != "") {
+	// 		c.String(200, mapViacepJSON(resp))
+	// 	} else {
+	// 		c.JSON(500, gin.H{"status": "500"})
+	// 	}
+	// }
+
+	cepabertoFaster := make(chan *CepAbertoResult)
+	viacepFaster := make(chan *ViaCepResult)
+	fastReturn := make(chan string)
+
+	go getCepaberto(cep, cepabertoFaster, fastReturn)
+	go getViacep(cep, viacepFaster, fastReturn)
+
+	fmt.Println("return faster:", <-fastReturn)
+
+	c.String(200, mapCepabertoJSON(<-cepabertoFaster))
+	c.String(200, mapViacepJSON(<-viacepFaster))
+
+	/*
+		if <-fastReturn == "cepaberto" {
+			if <-cepabertoFaster != nil {
+				c.String(200, mapCepabertoJSON(<-cepabertoFaster))
+			} else {
+				c.JSON(500, gin.H{"status": "500"})
+			}
 		} else {
-			c.JSON(500, gin.H{"status": "500"})
+			if <-fastReturn == "viacep" {
+				if viacepFaster != nil {
+					c.String(200, mapViacepJSON(<-viacepFaster))
+				} else {
+					c.JSON(500, gin.H{"status": "500"})
+				}
+			} else {
+				c.JSON(500, gin.H{"status": "500"})
+			}
 		}
-	}
+	*/
 }
 
 // 404 error showing start page
